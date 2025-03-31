@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ProgressBar;
+import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -30,6 +31,7 @@ public class DetailsCompteRenduActivity extends AppCompatActivity {
 
     private TextView tvDate, tvPraticien, tvMedecin, tvCommentaires, tvPieceJointe, tvEchantillons;
     private ProgressBar progressBar;
+    private Button btnDelete;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +54,9 @@ public class DetailsCompteRenduActivity extends AppCompatActivity {
         tvEchantillons = findViewById(R.id.tv_echantillons);
         progressBar = findViewById(R.id.progress_bar);
 
+        // Initialisation du bouton de suppression
+        btnDelete = findViewById(R.id.btn_delete);
+
         // Récupérer l'ID du compte rendu à partir de l'Intent
         int compteRenduId = getIntent().getIntExtra("compteRenduId", -1);
 
@@ -70,6 +75,9 @@ public class DetailsCompteRenduActivity extends AppCompatActivity {
 
             // Appel API pour récupérer les détails du compte rendu
             fetchCompteRenduDetails(compteRenduId, token);
+
+            // Ajouter un écouteur au bouton de suppression
+            btnDelete.setOnClickListener(v -> deleteCompteRendu(compteRenduId, token));
         } else {
             // Si l'ID n'est pas valide, afficher un message d'erreur
             Toast.makeText(this, "ID de compte rendu invalide", Toast.LENGTH_SHORT).show();
@@ -113,45 +121,74 @@ public class DetailsCompteRenduActivity extends AppCompatActivity {
                                     tvDate.setText("Date: " + cr.optString("date_visite", "Non spécifiée"));
                                     tvPraticien.setText("Praticien: " + cr.optString("praticien_nom", "Non spécifié"));
                                     tvCommentaires.setText("Commentaires: " + cr.optString("commentaires", "Non spécifiés"));
-                                    tvEchantillons.setText("Échantillons distribués: " + cr.optString("echantillons_distribues", "0"));
+                                    tvEchantillons.setText("Échantillons distribués: " + cr.optString("echantillons_distribues", "Non spécifiés"));
+                                    tvPieceJointe.setText("Pièce jointe: " + cr.optString("piece_jointe", "Non spécifiée"));
 
-                                    // Gestion de la pièce jointe (si elle existe)
-                                    String pieceJointe = cr.optString("piece_jointe", "Aucune");
-                                    if (!pieceJointe.equals("Aucune") && pieceJointe != null) {
-                                        tvPieceJointe.setText("Pièce jointe: " + pieceJointe);
-                                        tvPieceJointe.setOnClickListener(view -> {
-                                            // Ouvrir la pièce jointe dans un navigateur ou télécharger le fichier
-                                        });
-                                    } else {
-                                        tvPieceJointe.setText("Aucune pièce jointe");
-                                    }
-
-                                    // Masquer le ProgressBar après avoir chargé les données
-                                    progressBar.setVisibility(View.GONE);
-                                } else {
-                                    Toast.makeText(DetailsCompteRenduActivity.this, "Aucun compte rendu disponible", Toast.LENGTH_SHORT).show();
-                                    progressBar.setVisibility(View.GONE);
+                                    // Afficher le bouton de suppression si le compte rendu est valide
+                                    btnDelete.setVisibility(View.VISIBLE);
                                 }
                             } else {
                                 Toast.makeText(DetailsCompteRenduActivity.this, "Erreur lors de la récupération des données", Toast.LENGTH_SHORT).show();
-                                progressBar.setVisibility(View.GONE);
                             }
                         } catch (JSONException e) {
-                            // Log l'erreur JSON pour déboguer plus facilement
-                            Log.e("JSON Parsing Error", e.getMessage(), e);
-                            Toast.makeText(DetailsCompteRenduActivity.this, "Erreur JSON", Toast.LENGTH_SHORT).show();
+                            e.printStackTrace();
+                            Toast.makeText(DetailsCompteRenduActivity.this, "Erreur de parsing", Toast.LENGTH_SHORT).show();
+                        } finally {
+                            // Cacher le ProgressBar
                             progressBar.setVisibility(View.GONE);
                         }
                     }
-
-                }, new Response.ErrorListener() {
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(DetailsCompteRenduActivity.this, "Erreur réseau", Toast.LENGTH_SHORT).show();
+                    }
+                }) {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e("API Error", error.getMessage(), error);
-                Toast.makeText(DetailsCompteRenduActivity.this, "Erreur réseau", Toast.LENGTH_SHORT).show();
-                progressBar.setVisibility(View.GONE);
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Authorization", "Bearer " + token);
+                return headers;
             }
-        }) {
+        };
+
+        Volley.newRequestQueue(this).add(stringRequest);
+    }
+
+    private void deleteCompteRendu(int compteRenduId, String token) {
+        String url = "https://www.kevinechallier.fr/gsb/api/protected.php?comptes_rendus=true&delete=true&id_cr=" + compteRenduId;
+
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        try {
+                            // Affiche la réponse JSON brute dans le Log pour le débogage
+                            Log.d("API Response", response);
+
+                            JSONObject jsonObject = new JSONObject(response);
+                            int status = jsonObject.getInt("status");
+
+                            if (status == 200) {
+                                Toast.makeText(DetailsCompteRenduActivity.this, "Compte rendu supprimé", Toast.LENGTH_SHORT).show();
+                                finish(); // Retourner à l'écran précédent
+                            } else {
+                                Toast.makeText(DetailsCompteRenduActivity.this, "Erreur lors de la suppression", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            Toast.makeText(DetailsCompteRenduActivity.this, "Erreur de parsing", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Toast.makeText(DetailsCompteRenduActivity.this, "Erreur réseau", Toast.LENGTH_SHORT).show();
+                    }
+                }) {
             @Override
             public Map<String, String> getHeaders() {
                 Map<String, String> headers = new HashMap<>();

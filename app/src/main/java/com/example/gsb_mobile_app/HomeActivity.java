@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,11 +33,18 @@ public class HomeActivity extends AppCompatActivity {
 
     private static final String API_URL = "https://www.kevinechallier.fr/gsb/api/protected.php?comptes_rendus=true";
     private LinearLayout parentLayout;
+    private ProgressBar progressBar;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    protected void onResume() {
+        super.onResume();
         setContentView(R.layout.activity_home);
+
+        // Initialiser le ProgressBar
+        progressBar = findViewById(R.id.progressBar);
+
+        // Afficher le ProgressBar pendant le chargement
+        progressBar.setVisibility(View.VISIBLE);
 
         // Récupérer le token de l'utilisateur connecté
         SharedPreferences sharedPreferences = getSharedPreferences("appData", Context.MODE_PRIVATE);
@@ -48,6 +56,7 @@ public class HomeActivity extends AppCompatActivity {
         btn_logout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Déconnexion : suppression du token et redirection vers la page de connexion
                 SharedPreferences.Editor editor = sharedPreferences.edit();
                 editor.remove("token"); // Supprimer le token
                 editor.apply();
@@ -63,12 +72,16 @@ public class HomeActivity extends AppCompatActivity {
             getComptesRendus(token);
         } else {
             Toast.makeText(this, "Utilisateur non connecté", Toast.LENGTH_SHORT).show();
+            progressBar.setVisibility(View.GONE); // Cacher le ProgressBar
         }
     }
+
+
 
     private void getComptesRendus(String token) {
         if (token.isEmpty()) {
             Toast.makeText(this, "Utilisateur non connecté", Toast.LENGTH_SHORT).show();
+            progressBar.setVisibility(View.GONE); // Cacher le ProgressBar
             Intent intent = new Intent(HomeActivity.this, MainActivity.class); // Redirection vers l'écran de connexion
             startActivity(intent);
             finish();
@@ -98,6 +111,8 @@ public class HomeActivity extends AppCompatActivity {
                         } catch (JSONException e) {
                             e.printStackTrace();
                             Toast.makeText(HomeActivity.this, "Erreur de parsing des données", Toast.LENGTH_SHORT).show();
+                        }finally {
+                            progressBar.setVisibility(View.GONE); // Cacher le ProgressBar après la réponse
                         }
                     }
                 }, new Response.ErrorListener() {
@@ -105,6 +120,7 @@ public class HomeActivity extends AppCompatActivity {
             public void onErrorResponse(VolleyError error) {
                 Toast.makeText(HomeActivity.this, "Erreur de connexion", Toast.LENGTH_SHORT).show();
                 Log.e("API Error", error.toString());
+                progressBar.setVisibility(View.GONE); // Cacher le ProgressBar en cas d'erreur
             }
         }) {
             @Override
@@ -131,10 +147,10 @@ public class HomeActivity extends AppCompatActivity {
             // Vérifier si les champs existent
             String dateVisite = compteRendu.optString("date_visite", "Date inconnue");
             String praticienNom = compteRendu.optString("praticien_nom", "Praticien inconnu");
-            String detailsCR = compteRendu.optString("details", "Détails non disponibles");  // Ajouter le champ des détails du CR
+            String detailsCR = compteRendu.optString("details", "Détails non disponibles");
 
             // Récupérer l'ID du compte rendu
-            int compteRenduId = compteRendu.optInt("id", -1); // Si l'ID est dans la réponse JSON, sinon passez -1
+            int compteRenduId = compteRendu.optInt("id", -1);
 
             // Inflate le layout item_compte_rendu.xml
             View crView = inflater.inflate(R.layout.item_compte_rendu, parentLayout, false);
@@ -142,18 +158,18 @@ public class HomeActivity extends AppCompatActivity {
             TextView tvDate = crView.findViewById(R.id.tv_date);
             TextView tvPraticien = crView.findViewById(R.id.tv_praticien);
 
-            // Remplir les TextViews
+            // Remplir les TextViews avec les données
             tvDate.setText(dateVisite);
             tvPraticien.setText(praticienNom);
 
-            // Ajouter un listener sur le TextView pour les détails du compte rendu
+            // Ajouter un listener sur l'élément pour afficher plus de détails du compte rendu
             crView.setOnClickListener(v -> {
                 Intent intent = new Intent(HomeActivity.this, DetailsCompteRenduActivity.class);
-                intent.putExtra("compteRenduId", compteRenduId);
+                intent.putExtra("compteRenduId", compteRenduId); // Passage de l'ID du compte rendu à l'activité suivante
                 startActivity(intent);
             });
 
-            parentLayout.addView(crView);
+            parentLayout.addView(crView); // Ajouter la vue au layout principal
         }
     }
 }
