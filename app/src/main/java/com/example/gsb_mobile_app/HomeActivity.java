@@ -74,9 +74,16 @@ public class HomeActivity extends AppCompatActivity {
             Toast.makeText(this, "Utilisateur non connecté", Toast.LENGTH_SHORT).show();
             progressBar.setVisibility(View.GONE); // Cacher le ProgressBar
         }
+
+        Button btnCreateCR = findViewById(R.id.btn_create_cr);
+        btnCreateCR.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(HomeActivity.this, CreateCompteRenduActivity.class);
+                startActivity(intent);
+            }
+        });
     }
-
-
 
     private void getComptesRendus(String token) {
         if (token.isEmpty()) {
@@ -111,7 +118,7 @@ public class HomeActivity extends AppCompatActivity {
                         } catch (JSONException e) {
                             e.printStackTrace();
                             Toast.makeText(HomeActivity.this, "Erreur de parsing des données", Toast.LENGTH_SHORT).show();
-                        }finally {
+                        } finally {
                             progressBar.setVisibility(View.GONE); // Cacher le ProgressBar après la réponse
                         }
                     }
@@ -150,7 +157,7 @@ public class HomeActivity extends AppCompatActivity {
             String detailsCR = compteRendu.optString("details", "Détails non disponibles");
 
             // Récupérer l'ID du compte rendu
-            int compteRenduId = compteRendu.optInt("id", -1);
+            final int compteRenduId = compteRendu.optInt("id", -1); // Make it final
 
             // Inflate le layout item_compte_rendu.xml
             View crView = inflater.inflate(R.layout.item_compte_rendu, parentLayout, false);
@@ -163,10 +170,13 @@ public class HomeActivity extends AppCompatActivity {
             tvPraticien.setText(praticienNom);
 
             // Ajouter un listener sur l'élément pour afficher plus de détails du compte rendu
-            crView.setOnClickListener(v -> {
-                Intent intent = new Intent(HomeActivity.this, DetailsCompteRenduActivity.class);
-                intent.putExtra("compteRenduId", compteRenduId); // Passage de l'ID du compte rendu à l'activité suivante
-                startActivity(intent);
+            crView.setOnClickListener(new View.OnClickListener() { // Use anonymous class
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(HomeActivity.this, DetailsCompteRenduActivity.class);
+                    intent.putExtra("compteRenduId", compteRenduId); // Passage de l'ID du compte rendu à l'activité suivante
+                    startActivity(intent);
+                }
             });
 
             parentLayout.addView(crView); // Ajouter la vue au layout principal

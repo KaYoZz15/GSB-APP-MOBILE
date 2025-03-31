@@ -114,18 +114,24 @@ public class DetailsCompteRenduActivity extends AppCompatActivity {
                                 JSONArray comptesRendusArray = jsonObject.getJSONArray("comptes_rendus");
 
                                 if (comptesRendusArray.length() > 0) {
-                                    // Récupérer le premier élément du tableau (vous pouvez aussi boucler si vous avez plusieurs éléments)
-                                    JSONObject cr = comptesRendusArray.getJSONObject(0);
+                                    // Boucle pour récupérer le compte rendu avec l'ID correspondant
+                                    for (int i = 0; i < comptesRendusArray.length(); i++) {
+                                        JSONObject cr = comptesRendusArray.getJSONObject(i);
 
-                                    // Mise à jour des TextViews avec les données du premier compte rendu
-                                    tvDate.setText("Date: " + cr.optString("date_visite", "Non spécifiée"));
-                                    tvPraticien.setText("Praticien: " + cr.optString("praticien_nom", "Non spécifié"));
-                                    tvCommentaires.setText("Commentaires: " + cr.optString("commentaires", "Non spécifiés"));
-                                    tvEchantillons.setText("Échantillons distribués: " + cr.optString("echantillons_distribues", "Non spécifiés"));
-                                    tvPieceJointe.setText("Pièce jointe: " + cr.optString("piece_jointe", "Non spécifiée"));
+                                        // Vérification si l'ID correspond à celui demandé
+                                        if (cr.getInt("id") == compteRenduId) {
+                                            // Mise à jour des TextViews avec les données du compte rendu
+                                            tvDate.setText("Date: " + cr.optString("date_visite", "Non spécifiée"));
+                                            tvPraticien.setText("Praticien: " + cr.optString("praticien_nom", "Non spécifié"));
+                                            tvCommentaires.setText("Commentaires: " + cr.optString("commentaires", "Non spécifiés"));
+                                            tvEchantillons.setText("Échantillons distribués: " + cr.optString("echantillons_distribues", "Non spécifiés"));
+                                            tvPieceJointe.setText("Pièce jointe: " + cr.optString("piece_jointe", "Non spécifiée"));
 
-                                    // Afficher le bouton de suppression si le compte rendu est valide
-                                    btnDelete.setVisibility(View.VISIBLE);
+                                            // Afficher le bouton de suppression si le compte rendu est valide
+                                            btnDelete.setVisibility(View.VISIBLE);
+                                            break; // Sortir de la boucle une fois le bon compte rendu trouvé
+                                        }
+                                    }
                                 }
                             } else {
                                 Toast.makeText(DetailsCompteRenduActivity.this, "Erreur lors de la récupération des données", Toast.LENGTH_SHORT).show();
